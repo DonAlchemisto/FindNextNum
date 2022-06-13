@@ -4,6 +4,9 @@
 from vid by singing banana
 https://www.youtube.com/watch?v=scQ51q_1nhw
 
+or mathologer's vid:
+https://www.youtube.com/watch?v=4AuV93LOPcE
+
 Works if pattern is a polynomial
 1st we take the diff until we reach constant diff
 We can then apply Newton's formula, or just add
@@ -143,3 +146,8 @@ if __name__ == '__main__':
 
     solver = PolySeq(hex_nums)
     assert solver.get_nth_term(5) == 45
+
+    
+    seq = [1, 2, 4, 8, 16, 31, 57, 99, 163]
+    solver = PolySeq(seq)
+    assert solver.get_nth_term(len(seq)) == 256  # FAILS
