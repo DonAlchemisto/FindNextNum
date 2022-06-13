@@ -18,6 +18,8 @@ from collections import OrderedDict
 from functools import partial
 
 factorial = np.vectorize(np.math.factorial)
+n_choose_k = lambda n, k: int(factorial(n) / (factorial(k) * factorial(n - k)))
+# Not the most efficient
 
 
 def find_next_num(seq):
@@ -54,7 +56,29 @@ def find_next_num(seq):
 
 
 class PolySeq:
+    '''
+    TODO:
+    - A seq of Powers of 2 -> is its own 1st difference, never reaches a constant
+      Add this case
+
+    - Use the multiplicative binomial coefficient formula
+      instead of n_choose_k for higher efficiency
+      
+    '''
     def __init__(self, seq):
+        '''
+        attrs:
+          - solvable: bool -> according to whether a constant difference was reached or not
+
+        methods:
+          - get_nth_term:
+              args: n [int] -> starting at zero
+              returns: int
+
+          - get_next_term:
+            calls get_nth_term with the next term index
+              returns: int
+        '''
         # Establish the required difference
         self.seq = np.array(seq)
         seq_len = np.alen(self.seq)
@@ -78,7 +102,7 @@ class PolySeq:
         if self.solvable:
             self.order = diff
             self._get_nth_term = self._construct_polynomial_formula()
-            
+
 
     def _get_nth_term(self, n):
         '''Will only be called if self.solvable == False'''
@@ -92,42 +116,23 @@ class PolySeq:
         except IndexError:
             # Need to calculate it
             return self._get_nth_term(n)
+
+    def get_next_term(self):
+        return self.get_nth_term(len(self.seq))
         
 
     def _construct_polynomial_formula(self):
-        '''
-        Will only be called if self.solvable == True
-        Evaluates the Newton's forward difference formula:
-        sum[for k in range(0, order)] of: (kth_diff[0th elem] * something)
-        something = ((x * (x-1)) * ((x * (x-1) * (x - 2)) * ... * (x - k + 1)) / factorial(k)
-        The formula is useful in calculating the n'th term directly
-            without having to calculate the terms in the middle
-        Returns a callable that can be called with the required nth term
-        '''
-        # the diffs
-        diffs = np.array([d[0] for d in self.diff_order.values()])
-        factorials = factorial( np.arange(self.order + 1) )
-##        def get_x_terms(k):
-            #xs = [1, x]
-        
-        # Get the terms to be subtracted from xs
-        x_diff_terms = [0, 0] # These are what gets subtracted from x
-        terms = [(1 - i) for i in range(self.order - 1)]  
-        x_diff_terms += terms
-        x_diff_terms = np.array(x_diff_terms)
+        def poly_formula(x, coeffs):
+            xs = np.array([n_choose_k(x, i) for i in range(len(coeffs))])
+            return np.sum(coeffs * xs).astype(np.int64)
+            
+        coeffs = np.fromiter((val[0] for val in self.diff_order.values()), dtype=np.int64)
+        # Should simplify if they have a greatest common divisor
 
-        other_terms = diffs / factorials
+        # calculate exponents -> quick and easy way
+        return partial(poly_formula, coeffs=coeffs)
         
-        def func(x, x_diff_terms, other_terms):
-            'First construct the diffs then get the cumprod of them'
-            xs = [1,] + [x - i for i in x_diff_terms[1:]]
-            xs = np.array(xs)
-            xs = np.cumprod(xs)
-            return int(np.sum(xs * other_terms))
 
-        return partial(func, x_diff_terms=x_diff_terms, other_terms=other_terms)
-
-        
 
 if __name__ == '__main__':
     # Define some sequences to start with
@@ -150,4 +155,4 @@ if __name__ == '__main__':
     
     seq = [1, 2, 4, 8, 16, 31, 57, 99, 163]
     solver = PolySeq(seq)
-    assert solver.get_nth_term(len(seq)) == 256  # FAILS
+    assert solver.get_nth_term(len(seq)) == 256
